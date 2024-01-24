@@ -1,1 +1,4 @@
 code/build
+code/.vscode*
+code/.vs*
+code/.vs/win32_handmade/v17/.suo
