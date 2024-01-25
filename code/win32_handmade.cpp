@@ -19,7 +19,6 @@ struct win32_window_dimensions
 	int Width;
 	int Height;
 };
-global_variable win32_window_dimensions WindowDimensions;
 
 struct win32_offscreen_buffer
 {
@@ -35,12 +34,17 @@ global_variable win32_offscreen_buffer GlobalBackBuffer;
 global_variable bool Running;
 
 
-internal void Win32GetWindowDimension(HWND Window)
+internal win32_window_dimensions Win32GetWindowDimension(HWND Window)
 {
 	RECT ClientRect;
 	GetClientRect(Window, &ClientRect);
-	WindowDimensions.Width = ClientRect.right - ClientRect.left;
-	WindowDimensions.Height = ClientRect.bottom - ClientRect.top;
+
+    win32_window_dimensions Result;
+
+	Result.Width = ClientRect.right - ClientRect.left;
+	Result.Height = ClientRect.bottom - ClientRect.top;
+
+    return Result;
 }
 
 internal void Win32RenderWeirdGradient(win32_offscreen_buffer Buffer, int BlueOffset, int GreenOffset)
@@ -96,7 +100,7 @@ internal void Win32DisplayBufferInWindow(win32_offscreen_buffer Buffer, HDC Devi
     StretchDIBits(
 		DeviceContext,
 		0, 0, Buffer.Width, Buffer.Height,
-		0, 0, WindowDimensions.Width, WindowDimensions.Height,
+		0, 0, Width, Height,
 		Buffer.Memory,
 		&Buffer.Info,
 		DIB_RGB_COLORS,
@@ -118,8 +122,8 @@ LRESULT CALLBACK MainWindowCallback(
     case WM_SIZE:
     {
         
-        Win32GetWindowDimension(Window);
-        Win32ResizeDIBSection(&GlobalBackBuffer, WindowDimensions.Width, WindowDimensions.Height);
+        win32_window_dimensions Dimensions = Win32GetWindowDimension(Window);
+        Win32ResizeDIBSection(&GlobalBackBuffer, Dimensions.Width, Dimensions.Height);
 
         OutputDebugStringA("WM_SIZE\n");
     } break;
@@ -213,8 +217,8 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 
                 HDC DeviceContext = GetDC(WindowHandle);
                 
-                Win32GetWindowDimension(WindowHandle);
-                Win32DisplayBufferInWindow(GlobalBackBuffer,  DeviceContext, 0, 0, WindowDimensions.Width, WindowDimensions.Height);
+                win32_window_dimensions Dimensions = Win32GetWindowDimension(WindowHandle);
+                Win32DisplayBufferInWindow(GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
 
                 XOffset++;
