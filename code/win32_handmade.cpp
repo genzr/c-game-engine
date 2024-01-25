@@ -35,12 +35,12 @@ global_variable win32_offscreen_buffer GlobalBackBuffer;
 global_variable bool Running;
 
 
-internal void Win32GetWindowDimension(HWND Window, win32_window_dimensions* Dimensions)
+internal void Win32GetWindowDimension(HWND Window)
 {
 	RECT ClientRect;
 	GetClientRect(Window, &ClientRect);
-	Dimensions->Width = ClientRect.right - ClientRect.left;
-	Dimensions->Height = ClientRect.bottom - ClientRect.top;
+	WindowDimensions.Width = ClientRect.right - ClientRect.left;
+	WindowDimensions.Height = ClientRect.bottom - ClientRect.top;
 }
 
 internal void Win32RenderWeirdGradient(win32_offscreen_buffer Buffer, int BlueOffset, int GreenOffset)
@@ -118,7 +118,7 @@ LRESULT CALLBACK MainWindowCallback(
     case WM_SIZE:
     {
         
-        Win32GetWindowDimension(Window, &WindowDimensions);
+        Win32GetWindowDimension(Window);
         Win32ResizeDIBSection(&GlobalBackBuffer, WindowDimensions.Width, WindowDimensions.Height);
 
         OutputDebugStringA("WM_SIZE\n");
@@ -213,8 +213,8 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 
                 HDC DeviceContext = GetDC(WindowHandle);
                 
-                Win32GetWindowDimension(WindowHandle, &WindowDimensions);
-                Win32DisplayBufferInWindow(GlobalBackBuffer, DeviceContext, 0, 0, WindowDimensions.Width, WindowDimensions.Height);
+                Win32GetWindowDimension(WindowHandle);
+                Win32DisplayBufferInWindow(GlobalBackBuffer,  DeviceContext, 0, 0, WindowDimensions.Width, WindowDimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
 
                 XOffset++;
