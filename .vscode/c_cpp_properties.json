@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "defines": [
+                "_MBCS"
+                // Other defines as necessary
+            ]
+            // Include other necessary configuration settings like includePath, compilerPath, etc.
+        }
+    ],
+    "version": 4
+}

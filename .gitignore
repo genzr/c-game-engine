@@ -1,3 +1,8 @@
 code/build
 code/.vscode*
 code/.vs*
+win32_handmade.exe
+win32_handmade.ilk
+win32_handmade.obj
+win32_handmade.pdb
+vc140.pdb
