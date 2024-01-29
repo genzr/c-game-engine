@@ -181,6 +181,30 @@ LRESULT CALLBACK MainWindowCallback(
             EndPaint(Window, &Paint);
             OutputDebugStringA("WM_PAINT\n");
         } break;
+        case WM_KEYUP:
+        {
+            OutputDebugStringA("WM_KEYUP\n");
+        }break;
+        case WM_KEYDOWN:
+        {
+            uint32 VKeyCode = WParam;
+
+            //TODO - Finish adding support for other keys
+            if(VKeyCode == VK_SPACE)
+            {
+                OutputDebugStringA("VK_SPACE\n");
+            }
+
+            OutputDebugStringA("WM_KEYDOWN\n");
+        }break;
+        case WM_SYSKEYUP:
+        {
+            OutputDebugStringA("WM_SYSKEYUP\n");
+        }break;
+        case WM_SYSKEYDOWN:
+        {
+            OutputDebugStringA("WM_SYSKEYDOWN\n");
+        }break;
         default:
         {
             Result = DefWindowProc(Window, Message, WParam, LParam);
