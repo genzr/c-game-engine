@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 #define global_variable static
 #define internal static
@@ -13,6 +14,8 @@ typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
+
+global_variable bool Running;
 
 struct win32_window_dimensions
 {
@@ -31,8 +34,40 @@ struct win32_offscreen_buffer
 };
 global_variable win32_offscreen_buffer GlobalBackBuffer;
 
-global_variable bool Running;
+// We need to define the XInputGetState function ourselves because the XInput library is not included in the Windows SDK by default
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
+typedef X_INPUT_GET_STATE(x_input_get_state);
+X_INPUT_GET_STATE(XInputGetStateStub)
+{
+    return 0;
+}
+global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_
 
+
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(WORD dwUserIndex,XINPUT_VIBRATION *pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state);
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+    return 0;
+}
+global_variable x_input_set_state* XInputSetState_;
+#define XInputSetState XInputSetState_
+
+internal void Win32LoadXInput()
+{
+    HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+    if(!XInputLibrary)
+    {
+        XInputLibrary = LoadLibraryA("xinput1_3.dll");
+    }
+
+    if(XInputLibrary)
+    {
+        XInputGetState = (x_input_get_state*)GetProcAddress(XInputLibrary, "XInputGetState");
+        XInputSetState = (x_input_set_state*)GetProcAddress(XInputLibrary, "XInputSetState");
+    }
+}
 
 internal win32_window_dimensions Win32GetWindowDimension(HWND Window)
 {
@@ -97,8 +132,8 @@ internal void Win32DisplayBufferInWindow(win32_offscreen_buffer Buffer, HDC Devi
 {
     StretchDIBits(
 		DeviceContext,
-		0, 0, Buffer.Width, Buffer.Height,
 		0, 0, Width, Height,
+		0, 0, Buffer.Width, Buffer.Height,
 		Buffer.Memory,
 		&Buffer.Info,
 		DIB_RGB_COLORS,
@@ -118,10 +153,6 @@ LRESULT CALLBACK MainWindowCallback(
     {
         case WM_SIZE:
         {
-            win32_window_dimensions Dimensions = Win32GetWindowDimension(Window);
-            Win32ResizeDIBSection(&GlobalBackBuffer, Dimensions.Width, Dimensions.Height);
-
-            OutputDebugStringA("WM_SIZE\n");
         } break;
         case WM_DESTROY:
         {
@@ -162,7 +193,10 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 {
     WNDCLASSA WindowClass = {};
     // TODO -  Check if redraws are necessary
-    WindowClass.style = CS_HREDRAW|CS_VREDRAW;
+
+    Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
+
+    WindowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
     WindowClass.hInstance = Instance;
     WindowClass.lpfnWndProc = MainWindowCallback;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
@@ -192,6 +226,7 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 
             uint8 XOffset = 0;
             uint8 YOffset = 0;
+            HDC DeviceContext = GetDC(WindowHandle);
 
             while(Running)
             {
@@ -206,10 +241,40 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                     DispatchMessage(&Msg);
                 }
 
+                for(DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ControllerIndex++)
+                {
+                    XINPUT_STATE ControllerState;
+                    DWORD XInputState = XInputGetState(0, &ControllerState);
+
+                    if(XInputState == ERROR_SUCCESS) // ERROR_SUCCESS actually means the function succeeeds...
+                    {
+                        XINPUT_GAMEPAD* Pad = &ControllerState.Gamepad;
+
+                        WORD Up = Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP;
+                        WORD Down = Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+                        WORD Left = Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+                        WORD Right = Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+                        WORD Start = Pad->wButtons & XINPUT_GAMEPAD_START;
+                        WORD Back = Pad->wButtons & XINPUT_GAMEPAD_BACK;
+                        WORD LeftShoulder = Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
+                        WORD RightShoulder = Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
+                        WORD AButton = Pad->wButtons & XINPUT_GAMEPAD_A;
+                        WORD BButton = Pad->wButtons & XINPUT_GAMEPAD_B;
+                        WORD XButton = Pad->wButtons & XINPUT_GAMEPAD_X;
+                        WORD YButton = Pad->wButtons & XINPUT_GAMEPAD_Y;
+
+                        int16 StickX = Pad->sThumbLX;
+                        int16 StickY = Pad->sThumbLY;
+
+                        if(AButton)
+                        {
+                            YOffset += 2;
+                        }
+                    }
+                } 
+
                 Win32RenderWeirdGradient(GlobalBackBuffer, XOffset, YOffset);
 
-                HDC DeviceContext = GetDC(WindowHandle);
-                
                 win32_window_dimensions Dimensions = Win32GetWindowDimension(WindowHandle);
                 Win32DisplayBufferInWindow(GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
