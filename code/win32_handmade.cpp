@@ -39,7 +39,7 @@ global_variable win32_offscreen_buffer GlobalBackBuffer;
 typedef X_INPUT_GET_STATE(x_input_get_state);
 X_INPUT_GET_STATE(XInputGetStateStub)
 {
-    return 0;
+    return ERROR_DEVICE_NOT_CONNECTED;
 }
 global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
 #define XInputGetState XInputGetState_
@@ -49,7 +49,7 @@ global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
 typedef X_INPUT_SET_STATE(x_input_set_state);
 X_INPUT_SET_STATE(XInputSetStateStub)
 {
-    return 0;
+   return ERROR_DEVICE_NOT_CONNECTED; 
 }
 global_variable x_input_set_state* XInputSetState_;
 #define XInputSetState XInputSetState_
@@ -82,15 +82,15 @@ internal win32_window_dimensions Win32GetWindowDimension(HWND Window)
     return Result;
 }
 
-internal void Win32RenderWeirdGradient(win32_offscreen_buffer Buffer, int BlueOffset, int GreenOffset)
+internal void Win32RenderWeirdGradient(win32_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset)
 {
-	int Pitch = Buffer.Width*4;  // Size of the row in bytes
-	uint8* Row = (uint8*)Buffer.Memory;  // Pointer to the first row of the bitmap
+	int Pitch = Buffer->Width*4;  // Size of the row in bytes
+	uint8* Row = (uint8*)Buffer->Memory;  // Pointer to the first row of the bitmap
 
-    for (int Y = 0; Y < Buffer.Height; Y++)  // For each row
+    for (int Y = 0; Y < Buffer->Height; Y++)  // For each row
     {
 		uint32* Pixel = (uint32*)Row;  // Pointer to the first pixel in the row
-        for (int X = 0; X < Buffer.Width; X++) // For each pixel in the row
+        for (int X = 0; X < Buffer->Width; X++) // For each pixel in the row
         {
 			uint8 Blue = (X + BlueOffset); // Blue value of the pixel
 			uint8 Green = (Y + GreenOffset); // Green value of the pixel
@@ -128,14 +128,14 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer* Buffer, int Width, i
     Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 }
 
-internal void Win32DisplayBufferInWindow(win32_offscreen_buffer Buffer, HDC DeviceContext, int X, int Y, int Width, int Height)
+internal void Win32DisplayBufferInWindow(win32_offscreen_buffer* Buffer, HDC DeviceContext, int X, int Y, int Width, int Height)
 {
     StretchDIBits(
 		DeviceContext,
 		0, 0, Width, Height,
-		0, 0, Buffer.Width, Buffer.Height,
-		Buffer.Memory,
-		&Buffer.Info,
+		0, 0, Buffer->Width, Buffer->Height,
+		Buffer->Memory,
+		&Buffer->Info,
 		DIB_RGB_COLORS,
 		SRCCOPY
 	);
@@ -177,7 +177,7 @@ LRESULT CALLBACK MainWindowCallback(
             int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
             int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 
-            Win32DisplayBufferInWindow(GlobalBackBuffer, DeviceContext, X, Y, Width, Height);
+            Win32DisplayBufferInWindow(&GlobalBackBuffer, DeviceContext, X, Y, Width, Height);
             EndPaint(Window, &Paint);
             OutputDebugStringA("WM_PAINT\n");
         } break;
@@ -297,10 +297,10 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                     }
                 } 
 
-                Win32RenderWeirdGradient(GlobalBackBuffer, XOffset, YOffset);
+                Win32RenderWeirdGradient(&GlobalBackBuffer, XOffset, YOffset);
 
                 win32_window_dimensions Dimensions = Win32GetWindowDimension(WindowHandle);
-                Win32DisplayBufferInWindow(GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
+                Win32DisplayBufferInWindow(&GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
 
                 XOffset++;
