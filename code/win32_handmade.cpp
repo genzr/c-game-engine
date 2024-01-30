@@ -17,6 +17,9 @@ typedef int64_t int64;
 
 global_variable bool Running;
 
+global_variable uint8 XOffset = 0;
+global_variable uint8 YOffset = 0;
+
 struct win32_window_dimensions
 {
 	int Width;
@@ -183,27 +186,72 @@ LRESULT CALLBACK MainWindowCallback(
         } break;
         case WM_KEYUP:
         {
-            OutputDebugStringA("WM_KEYUP\n");
         }break;
         case WM_KEYDOWN:
         {
             uint32 VKeyCode = WParam;
+            uint32 IsDown = (LParam & (1 << 31)) == 0;
+            uint32 WasDown = (LParam & (1 << 30)) != 0;
 
-            //TODO - Finish adding support for other keys
-            if(VKeyCode == VK_SPACE)
+            //Only register if key was not already down
+           if(WasDown != 1 && IsDown)
             {
-                OutputDebugStringA("VK_SPACE\n");
+                //TODO - Finish adding support for other keys
+                if(VKeyCode == VK_SPACE)
+                {
+                    XOffset += 10;
+                    YOffset += 10;
+                }
+                else if(VKeyCode == VK_ESCAPE)
+                {
+                    Running = false;
+                }
+                else if(VKeyCode == VK_UP)
+                {
+                    YOffset += 10;
+                }
+                else if(VKeyCode == VK_DOWN)
+                {
+                    YOffset -= 10;
+                }
+                else if(VKeyCode == VK_LEFT)
+                {
+                    XOffset -= 10;
+                }
+                else if(VKeyCode == VK_RIGHT)
+                {
+                    XOffset += 10;
+                }
+                else if (VKeyCode == 'A')
+                {
+                    OutputDebugStringA("A\n");
+                }
+                else if (VKeyCode == 'S')
+                {
+                    OutputDebugStringA("S\n");
+                }
+                else if (VKeyCode == 'D')
+                {
+                    OutputDebugStringA("D\n");
+                }
+                else if (VKeyCode == 'F')
+                {
+                    OutputDebugStringA("F\n");
+                }
             }
-
-            OutputDebugStringA("WM_KEYDOWN\n");
         }break;
         case WM_SYSKEYUP:
         {
-            OutputDebugStringA("WM_SYSKEYUP\n");
         }break;
         case WM_SYSKEYDOWN:
         {
-            OutputDebugStringA("WM_SYSKEYDOWN\n");
+            //Handle alt + f4
+            uint32 VKeyCode = WParam;
+            uint32_t AltKeyWasDown = (LParam & (1 << 29));
+            if(VKeyCode == VK_F4 && AltKeyWasDown)
+            {
+                Running = false;
+            }
         }break;
         default:
         {
@@ -248,8 +296,6 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 
             Running = true;
 
-            uint8 XOffset = 0;
-            uint8 YOffset = 0;
             HDC DeviceContext = GetDC(WindowHandle);
 
             while(Running)
@@ -302,9 +348,6 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                 win32_window_dimensions Dimensions = Win32GetWindowDimension(WindowHandle);
                 Win32DisplayBufferInWindow(&GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
-
-                XOffset++;
-                YOffset++;
             }
         }
         else
