@@ -85,13 +85,12 @@ internal void Win32InitDSound(HWND* WindowHandle)
                     PrimaryBufferDescription.dwSize = sizeof(PrimaryBufferDescription);
                     PrimaryBufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 
-                    //TODO - Understand what is going on here a little big better 
                     WAVEFORMATEX WaveFormat = {};
                     WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
                     WaveFormat.nChannels = 2;
-                    WaveFormat.nSamplesPerSec = 48000;
+                    WaveFormat.nSamplesPerSec = 44100; //44.1 kHz
                     WaveFormat.wBitsPerSample = 16;
-                    WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample)/8;
+                    WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample)/8; // This is the number of bytes per sample = 4
                     WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec*WaveFormat.nBlockAlign;
                     WaveFormat.cbSize = 0;
 
@@ -115,12 +114,11 @@ internal void Win32InitDSound(HWND* WindowHandle)
                         //TODO - Logging
                     } 
 
-
                     // "Create" a secondary buffer
                     DSBUFFERDESC SecondaryBufferDescription = {};
                     SecondaryBufferDescription.dwSize = sizeof(SecondaryBufferDescription);
                     SecondaryBufferDescription.dwFlags = 0;
-                    SecondaryBufferDescription.dwBufferBytes = 48000*4;
+                    SecondaryBufferDescription.dwBufferBytes = WaveFormat.nSamplesPerSec*WaveFormat.nBlockAlign;
                     SecondaryBufferDescription.lpwfxFormat = &WaveFormat;
                     
                     LPDIRECTSOUNDBUFFER SecondaryBuffer;
@@ -287,7 +285,6 @@ LRESULT CALLBACK MainWindowCallback(
             //Only register if key was not already down
            if(WasDown != 1 && IsDown)
             {
-                //TODO - Finish adding support for other keys
                 if(VKeyCode == VK_SPACE)
                 {
                     XOffset += 10;
@@ -355,7 +352,6 @@ LRESULT CALLBACK MainWindowCallback(
 int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine, int ShowCode)
 {
     WNDCLASSA WindowClass = {};
-    // TODO -  Check if redraws are necessary
 
     Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
