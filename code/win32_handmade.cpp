@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
 
 #define global_variable static
 #define internal static
@@ -57,6 +58,38 @@ X_INPUT_SET_STATE(XInputSetStateStub)
 global_variable x_input_set_state* XInputSetState_;
 #define XInputSetState XInputSetState_
 
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+internal void Win32InitDSound()
+{
+    //Load the library
+    HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+
+    if(DSoundLibrary)
+    {
+        direct_sound_create* DirectSoundCreate_ = (direct_sound_create*)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+
+        if(DirectSoundCreate_ != nullptr)
+        {
+            //Get a DirectSound object 
+            LPDIRECTSOUND DirectSound;
+            if(DirectSoundCreate_(0, &DirectSound, 0) == DS_OK) 
+            {
+                OutputDebugStringA("DirectSound created successfully\n");
+                // "Create" a primary buffer
+                // "Create" a secondary buffer
+                // Start playing
+            }
+        }
+        else 
+        {
+            //TODO - Logging
+        }
+    }
+
+
+}
 internal void Win32LoadXInput()
 {
     HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
@@ -297,6 +330,8 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
             Running = true;
 
             HDC DeviceContext = GetDC(WindowHandle);
+
+            Win32InitDSound();
 
             while(Running)
             {
