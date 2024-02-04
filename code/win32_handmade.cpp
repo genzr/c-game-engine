@@ -525,6 +525,8 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                     {
                         BytesToWrite = PlayCursor - ByteToLock;
                     }
+
+                    Win32FillAudioBuffer(&SoundOutput, ByteToLock, BytesToWrite);
                 }
                 else 
                 {
