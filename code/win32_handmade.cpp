@@ -3,6 +3,7 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h>
+#include <stdio.h>
 
 #define global_variable static
 #define internal static
@@ -73,7 +74,10 @@ typedef struct
     int BytesPerSample;
     int SecondaryBufferSize;
     int ToneVolume;
+    float tSine;
 } Win32_sound_output;
+
+global_variable Win32_sound_output SoundOutput = {};
 
 internal void Win32InitDSound(HWND WindowHandle, int32 SamplesPerSecond, int32 BufferSize)
 {
@@ -322,6 +326,8 @@ LRESULT CALLBACK MainWindowCallback(
                 }
                 else if (VKeyCode == 'A')
                 {
+                    SoundOutput.Hz = 512;
+                    SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond/SoundOutput.Hz;
                     OutputDebugStringA("A\n");
                 }
                 else if (VKeyCode == 'S')
@@ -373,10 +379,12 @@ internal void Win32FillAudioBuffer(Win32_sound_output* SoundOutput, DWORD ByteTo
         for(DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; SampleIndex++)
         {
             //TODO - Understand this better
-            float SineValue = sinf(2.0f*3.14159f*(SoundOutput->RunningSampleIndex / (float)SoundOutput->WavePeriod));
+            float SineValue = sinf(SoundOutput->tSine);
             int16 SampleValue = (int16)(SineValue * SoundOutput->ToneVolume);
             *SampleOut++ = SampleValue;
             *SampleOut++ = SampleValue;
+        
+            SoundOutput->tSine += 2.0f*3.14159f*(1.0f / (float)SoundOutput->WavePeriod);
             SoundOutput->RunningSampleIndex++;
         }
 
@@ -385,10 +393,12 @@ internal void Win32FillAudioBuffer(Win32_sound_output* SoundOutput, DWORD ByteTo
         DWORD Region2SampleCount = Region2Size/SoundOutput->BytesPerSample;
         for(DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; SampleIndex++)
         {
-            float SineValue = sinf(2.0f*3.14159f*(SoundOutput->RunningSampleIndex / (float)SoundOutput->WavePeriod));
+            float SineValue = sinf(SoundOutput->tSine);
             int16 SampleValue = (int16)(SineValue * SoundOutput->ToneVolume);
             *SampleOut++ = SampleValue;
             *SampleOut++ = SampleValue;
+            
+            SoundOutput->tSine += 2.0f*3.14159f*(1.0f / (float)SoundOutput->WavePeriod);
             SoundOutput->RunningSampleIndex++;
         }   
 
@@ -436,12 +446,10 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
 
             HDC DeviceContext = GetDC(WindowHandle);
 
-            Win32_sound_output SoundOutput = {};
             SoundOutput.SamplesPerSecond = 44100;
             SoundOutput.RunningSampleIndex = 0;
             SoundOutput.Hz = 256;
-            SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond/256;
-            SoundOutput.HalfWavePeriod = SoundOutput.WavePeriod/2;
+            SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond/SoundOutput.Hz;
             SoundOutput.BytesPerSample = sizeof(int16)*2;
             SoundOutput.SecondaryBufferSize = SoundOutput.SamplesPerSecond*SoundOutput.BytesPerSample; // 1 second of sound.
             SoundOutput.ToneVolume = 1000;
@@ -451,7 +459,15 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
             SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
             IsSoundPlaying = true;
 
+            LARGE_INTEGER PerformanceFreq;
+            QueryPerformanceFrequency(&PerformanceFreq);
+            
             //Main Loop
+            LARGE_INTEGER StartCounter;
+            QueryPerformanceFrequency(&StartCounter);
+
+
+
             while(Running)
             {
                 while (MessageResult = PeekMessage(&Msg, 0, 0, 0, PM_REMOVE))
@@ -503,8 +519,8 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                 {
                     DWORD ByteToLock = (SoundOutput.RunningSampleIndex*SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize;
                     DWORD BytesToWrite;
+                    
                     // TODO - We need a more accurate check than ByteToLock == PlayCursor
-
                     if (ByteToLock == PlayCursor)
                     {
                         if(IsSoundPlaying)
@@ -536,6 +552,21 @@ int APIENTRY WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLin
                 win32_window_dimensions Dimensions = Win32GetWindowDimension(WindowHandle);
                 Win32DisplayBufferInWindow(&GlobalBackBuffer,  DeviceContext, 0, 0, Dimensions.Width, Dimensions.Height);
                 ReleaseDC(WindowHandle, DeviceContext);
+
+                LARGE_INTEGER EndCounter;
+                QueryPerformanceCounter(&EndCounter);
+
+                uint64_t ElapsedCounter;
+                ElapsedCounter = EndCounter.QuadPart - StartCounter.QuadPart;
+
+                float MSPerFrame = (int32_t)((1000.0f*ElapsedCounter) / PerformanceFreq.QuadPart);
+                float FramesPerSecond = 1000.0f / MSPerFrame;
+                
+                char Buffer[256];
+                sprintf(Buffer, "FPS: %f\n", FramesPerSecond);
+                OutputDebugStringA(Buffer);
+
+                StartCounter = EndCounter;
             }
         }
         else
